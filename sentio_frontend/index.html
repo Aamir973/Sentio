@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Sentio | Mental Health Companion</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <!-- FIX: Correct Lucide CDN -->
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+</head>
+<body>
+    <div class="bg-blobs">
+        <div class="blob blob-1"></div>
+        <div class="blob blob-2"></div>
+        <div class="blob blob-3"></div>
+    </div>
+
+    <div id="app">
+
+        <!-- ── Auth Screen ─────────────────────────────────────────────── -->
+        <section id="screen-auth" class="screen active">
+            <div class="auth-container">
+                <div class="brand">
+                    <div class="brand-mark">
+                        <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+                            <circle cx="24" cy="24" r="22" stroke="var(--sage-dark)" stroke-width="2"/>
+                            <path d="M14 24 Q24 12 34 24 Q24 36 14 24Z" fill="var(--sage-medium)" opacity="0.6"/>
+                            <circle cx="24" cy="24" r="4" fill="var(--sage-dark)"/>
+                        </svg>
+                    </div>
+                    <h2>Sentio</h2>
+                    <p>Mindful intelligence for your well-being.</p>
+                </div>
+
+                <!-- Sign In Form -->
+                <div id="formSignIn" class="auth-form">
+                    <div class="form-group">
+                        <div class="input-wrapper">
+                            <i data-lucide="mail"></i>
+                            <input id="signInEmail" type="email" placeholder="Email address" class="input-field">
+                        </div>
+                        <div class="input-wrapper">
+                            <i data-lucide="lock"></i>
+                            <input id="signInPassword" type="password" placeholder="Password" class="input-field">
+                        </div>
+                        <div id="authError" class="auth-error hidden"></div>
+                        <button class="btn btn-primary" onclick="handleSignIn()">
+                            <span>Sign In</span>
+                            <i data-lucide="arrow-right"></i>
+                        </button>
+                        <button class="btn btn-ghost" onclick="showSignUp()">Create an account</button>
+                    </div>
+                </div>
+
+                <!-- Sign Up Form -->
+                <div id="formSignUp" class="auth-form hidden">
+                    <div class="form-group">
+                        <div class="input-wrapper">
+                            <i data-lucide="user"></i>
+                            <input id="signUpName" type="text" placeholder="Your name" class="input-field">
+                        </div>
+                        <div class="input-wrapper">
+                            <i data-lucide="mail"></i>
+                            <input id="signUpEmail" type="email" placeholder="Email address" class="input-field">
+                        </div>
+                        <div class="input-wrapper">
+                            <i data-lucide="lock"></i>
+                            <input id="signUpPassword" type="password" placeholder="Password (min 6 chars)" class="input-field">
+                        </div>
+                        <div id="signUpError" class="auth-error hidden"></div>
+                        <button class="btn btn-primary" onclick="handleSignUp()">
+                            <span>Create Account</span>
+                            <i data-lucide="arrow-right"></i>
+                        </button>
+                        <button class="btn btn-ghost" onclick="showSignIn()">Back to Sign In</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ── Dashboard Screen ───────────────────────────────────────── -->
+        <section id="screen-dashboard" class="screen">
+            <header>
+                <div class="header-brand">
+                    <h1>Sentio</h1>
+                    <span class="header-date" id="headerDate"></span>
+                </div>
+                <button class="avatar" id="avatarBtn" onclick="handleSignOut()" title="Sign out">JS</button>
+            </header>
+
+            <main>
+                <!-- Greeting -->
+                <div class="greeting-band">
+                    <p id="greetingText">Good morning</p>
+                    <span id="greetingName">friend</span>
+                </div>
+
+                <!-- Gauge Card -->
+                <div class="card gauge-section">
+                    <div class="card-label">Depression Risk Score</div>
+                    <div class="gauge-container">
+                        <canvas id="gaugeCanvas"></canvas>
+                        <div class="risk-badge" id="riskBadge">MODERATE RISK</div>
+                    </div>
+                    <p class="insight-text" id="insightText">Complete a check-in to get your score.</p>
+                </div>
+
+                <!-- Mood Trend -->
+                <div class="card trend-section">
+                    <div class="card-header-row">
+                        <span class="card-label">7-Day Mood Trend</span>
+                        <span class="trend-delta" id="trendDelta">—</span>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="trendCanvas"></canvas>
+                    </div>
+                </div>
+
+                <!-- Quick Actions -->
+                <div class="actions-grid">
+                    <div class="card action-card" onclick="navigateTo('input')">
+                        <div class="icon-circle orange">
+                            <i data-lucide="message-circle"></i>
+                        </div>
+                        <div class="action-info">
+                            <h4>Chat</h4>
+                            <p>Talk to Sentio</p>
+                        </div>
+                    </div>
+                    <div class="card action-card" onclick="navigateTo('activities')">
+                        <div class="icon-circle">
+                            <i data-lucide="wind"></i>
+                        </div>
+                        <div class="action-info">
+                            <h4>Activities</h4>
+                            <p>Guided exercises</p>
+                        </div>
+                    </div>
+                </div>
+            </main>
+
+            <nav class="bottom-nav">
+                <button class="nav-item active" onclick="navigateTo('dashboard')" title="Dashboard">
+                    <i data-lucide="layout-dashboard"></i>
+                    <span>Home</span>
+                </button>
+                <button class="nav-item" onclick="navigateTo('input')" title="Chat">
+                    <i data-lucide="message-circle"></i>
+                    <span>Chat</span>
+                </button>
+                <button class="nav-item" onclick="navigateTo('activities')" title="Activities">
+                    <i data-lucide="heart"></i>
+                    <span>Care</span>
+                </button>
+            </nav>
+        </section>
+
+        <!-- ── Input / Chat Screen ─────────────────────────────────────── -->
+        <section id="screen-input" class="screen">
+            <header>
+                <button class="icon-btn back-btn" onclick="navigateTo('dashboard')">
+                    <i data-lucide="chevron-left"></i>
+                </button>
+                <h1>How are you?</h1>
+                <div class="empty"></div>
+            </header>
+
+            <!-- Chat message list -->
+            <div class="chat-main" id="chatMessages">
+                <div class="chat-bubble received">
+                    <div class="bubble-avatar">S</div>
+                    <div class="bubble-body">Hi there. I'm Sentio — your mental wellness companion. Tell me how you're feeling today. I'm here to listen. 💚</div>
+                </div>
+            </div>
+
+            <!-- Waveform (shown during recording) -->
+            <div class="waveform-box" id="waveformBox" style="display:none">
+                <canvas id="micWaveform"></canvas>
+                <span class="rec-label">Recording… tap mic to stop</span>
+            </div>
+
+            <!-- Input bar -->
+            <div class="input-actions">
+                <button id="micBtn" class="mic-circle" onclick="toggleRecording()" title="Voice input">
+                    <i data-lucide="mic"></i>
+                </button>
+                <div class="text-input-wrapper">
+                    <input id="chatInput" type="text" placeholder="Type your thoughts…" class="text-input"
+                           onkeydown="if(event.key==='Enter' && !event.shiftKey){ event.preventDefault(); sendMessage(); }">
+                    <button class="send-btn" id="sendBtn" onclick="sendMessage()" title="Send">
+                        <i data-lucide="arrow-right"></i>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- ── Processing Screen ──────────────────────────────────────── -->
+        <section id="screen-processing" class="screen">
+            <div class="processing-container">
+                <div class="pulse-wrapper">
+                    <div class="pulse-ring"></div>
+                    <div class="pulse-ring"></div>
+                    <div class="pulse-ring"></div>
+                    <i data-lucide="brain"></i>
+                </div>
+                <h3 id="processingLabel">Analyzing mood indicators…</h3>
+                <p>Synthesizing acoustic and linguistic patterns</p>
+            </div>
+        </section>
+
+        <!-- ── Activity Centre Screen ─────────────────────────────────── -->
+        <section id="screen-activities" class="screen">
+            <header>
+                <button class="icon-btn back-btn" onclick="navigateTo('dashboard')">
+                    <i data-lucide="chevron-left"></i>
+                </button>
+                <h1>Recommendations</h1>
+                <div class="empty"></div>
+            </header>
+
+            <main>
+                <div class="category-tabs">
+                    <button class="tab active" onclick="filterActivities('all', this)">For You</button>
+                    <button class="tab" onclick="filterActivities('mindful', this)">Mindful</button>
+                    <button class="tab" onclick="filterActivities('physical', this)">Physical</button>
+                </div>
+
+                <div id="activitiesGrid">
+                    <div class="card activity-card" data-category="mindful">
+                        <div class="activity-top">
+                            <div class="icon-circle small">
+                                <i data-lucide="wind"></i>
+                            </div>
+                            <span class="activity-duration">5 min</span>
+                        </div>
+                        <h4>Box Breathing</h4>
+                        <p>Calm your nervous system with structured breathing</p>
+                    </div>
+                    <div class="card activity-card" data-category="mindful">
+                        <div class="activity-top">
+                            <div class="icon-circle small">
+                                <i data-lucide="book-open"></i>
+                            </div>
+                            <span class="activity-duration">10 min</span>
+                        </div>
+                        <h4>Daily Journal</h4>
+                        <p>Write freely to process thoughts and emotions</p>
+                    </div>
+                    <div class="card activity-card" data-category="physical">
+                        <div class="activity-top">
+                            <div class="icon-circle small">
+                                <i data-lucide="moon"></i>
+                            </div>
+                            <span class="activity-duration">Nightly</span>
+                        </div>
+                        <h4>Sleep Hygiene</h4>
+                        <p>Build a restful evening routine for better sleep</p>
+                    </div>
+                    <div class="card activity-card" data-category="physical">
+                        <div class="activity-top">
+                            <div class="icon-circle small">
+                                <i data-lucide="sun"></i>
+                            </div>
+                            <span class="activity-duration">15 min</span>
+                        </div>
+                        <h4>Mindful Walk</h4>
+                        <p>Ground yourself with a slow, attentive walk outside</p>
+                    </div>
+                    <div class="card activity-card" data-category="mindful">
+                        <div class="activity-top">
+                            <div class="icon-circle small">
+                                <i data-lucide="heart"></i>
+                            </div>
+                            <span class="activity-duration">8 min</span>
+                        </div>
+                        <h4>Body Scan</h4>
+                        <p>Gently tune in to physical sensations from head to toe</p>
+                    </div>
+                    <div class="card activity-card" data-category="physical">
+                        <div class="activity-top">
+                            <div class="icon-circle small">
+                                <i data-lucide="zap"></i>
+                            </div>
+                            <span class="activity-duration">20 min</span>
+                        </div>
+                        <h4>Gentle Stretch</h4>
+                        <p>Release tension held in your body with slow movement</p>
+                    </div>
+                </div>
+            </main>
+
+            <nav class="bottom-nav">
+                <button class="nav-item" onclick="navigateTo('dashboard')" title="Dashboard">
+                    <i data-lucide="layout-dashboard"></i>
+                    <span>Home</span>
+                </button>
+                <button class="nav-item" onclick="navigateTo('input')" title="Chat">
+                    <i data-lucide="message-circle"></i>
+                    <span>Chat</span>
+                </button>
+                <button class="nav-item active" onclick="navigateTo('activities')" title="Activities">
+                    <i data-lucide="heart"></i>
+                    <span>Care</span>
+                </button>
+            </nav>
+        </section>
+
+    </div><!-- /#app -->
+
+    <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,41 @@
+# ─────────────────────────────────────────────────────────
+#  Sentio Backend – Python Dependencies
+# ─────────────────────────────────────────────────────────
+
+# Web framework
+fastapi==0.111.0
+uvicorn[standard]==0.30.1
+python-multipart==0.0.9        # required for audio file uploads
+
+# HTTP client (remote LLM API)
+httpx==0.27.0
+
+# Firebase / Firestore
+firebase-admin==6.5.0
+
+# Environment / config
+python-dotenv==1.0.1
+pydantic==2.7.1
+pydantic-settings==2.3.0
+
+# ── Depression Model ──────────────────────────────────────
+# PyTorch (CPU-only — swap whl/cpu for cu121 if you have a GPU)
+# Install separately to avoid resolver issues:
+#   pip install torch --index-url https://download.pytorch.org/whl/cpu
+torch>=2.1.0
+
+# BERT sentence embeddings (used by _TextProjector)
+sentence-transformers>=2.6.0   # pulls transformers + tokenizers
+
+# Audio feature extraction (MFCC) – only needed if passing audio_path
+librosa>=0.10.0
+soundfile>=0.12.1              # librosa audio I/O backend
+
+# ── Numerics ──────────────────────────────────────────────
+numpy>=1.24.0
+
+# ── Logging ───────────────────────────────────────────────
+loguru==0.7.2
+
+# ── Async ─────────────────────────────────────────────────
+anyio==4.4.0
