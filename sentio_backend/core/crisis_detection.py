@@ -1,19 +1,26 @@
 """
 Sentio – Rule-based crisis detection.
 
-Scans user input for suicide / self-harm keywords and phrases.
-If a match is found, the normal LLM pipeline is bypassed entirely
-and a pre-written emergency response is returned immediately.
+Returns structured hotlines data separately from the empathetic chat response
+so the frontend can display them in a modal without cluttering the chat bubble.
+
+Crisis events are logged to Firestore via the rule engine (which has access
+to user_id and session_id) — crisis_detection itself stays stateless.
 """
 
 from __future__ import annotations
 
+import json
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from functools import lru_cache
+from pathlib import Path
 
-# ── Crisis keyword / phrase list ──────────────────────────────────────────────
+from loguru import logger
+
+_BOUNDARIES_PATH = Path(__file__).parent.parent / "config" / "sentio_boundaries.json"
+
 CRISIS_PATTERNS: list[str] = [
-    # Suicidal ideation
     r"\bsuicid\w*\b",
     r"\bkill\s+my\s*self\b",
     r"\bend\s+my\s+life\b",
@@ -22,12 +29,10 @@ CRISIS_PATTERNS: list[str] = [
     r"\bwish\s+i\s+was\s+dead\b",
     r"\bbetter\s+off\s+dead\b",
     r"\bbetter\s+off\s+without\s+me\b",
-    # Self-harm
     r"\bself[\s\-]?harm\b",
     r"\bcut\s+(my\s*)?(wrist|arm|self)\b",
     r"\bhurt\s+my\s*self\b",
     r"\bself[\s\-]?injur\w*\b",
-    # Crisis phrases
     r"\boverdos\w*\b",
     r"\bhanging\s+my\s*self\b",
     r"\bjump\s+off\b",
@@ -38,41 +43,58 @@ _COMPILED_PATTERNS: list[re.Pattern[str]] = [
     re.compile(p, re.IGNORECASE) for p in CRISIS_PATTERNS
 ]
 
-CRISIS_RESPONSE = (
-    "I'm really concerned about what you've shared, and I want you to know that "
-    "you are not alone. Your life has value, and there are people who care about you.\n\n"
-    "**Please reach out for immediate support:**\n"
-    "🆘 **National Suicide Prevention Lifeline:** Call or text **988** (US)\n"
-    "🆘 **Crisis Text Line:** Text HOME to **741741**\n"
-    "🆘 **International Association for Suicide Prevention:** https://www.iasp.info/resources/Crisis_Centres/\n\n"
-    "If you are in immediate danger, please call **911** or your local emergency number.\n\n"
-    "I'm here with you right now. Would you like to talk about what you're going through?"
+
+@lru_cache(maxsize=1)
+def _load_boundaries() -> dict:
+    try:
+        with open(_BOUNDARIES_PATH, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception as exc:
+        logger.warning(f"[CrisisDetection] Could not load boundaries: {exc}")
+        return {}
+
+
+def _get_country_from_timezone(timezone: str | None) -> str:
+    if not timezone:
+        return "DEFAULT"
+    b = _load_boundaries()
+    tz_map: dict = b.get("timezone_to_country", {})
+    return tz_map.get(timezone, "DEFAULT")
+
+
+def _get_crisis_contacts(timezone: str | None) -> dict:
+    """Return raw crisis contacts dict for the user's country."""
+    b = _load_boundaries()
+    contacts: dict = b.get("crisis_contacts", {})
+    country_code = _get_country_from_timezone(timezone)
+    return contacts.get(country_code) or contacts.get("DEFAULT", {})
+
+
+# Empathetic chat response — NO hotlines in here
+_EMPATHETIC_RESPONSE = (
+    "What you've just shared takes courage, and I'm really glad you told me. "
+    "You are not alone in this — and what you're feeling right now is not permanent, "
+    "even when it feels that way. "
+    "I'm still here with you. Would you like to talk about what's been going on?"
 )
 
 
 @dataclass
 class CrisisResult:
-    """Result of a crisis-detection scan."""
-
     is_crisis: bool
     matched_pattern: str | None = None
     response: str | None = None
+    # Structured hotlines for frontend modal — NOT embedded in response
+    crisis_contacts: dict = field(default_factory=dict)
 
 
-def detect_crisis(user_message: str) -> CrisisResult:
-    """
-    Scan *user_message* for crisis indicators.
-
-    Returns a CrisisResult with ``is_crisis=True`` and the pre-written
-    emergency response when a pattern matches, otherwise ``is_crisis=False``.
-    """
+def detect_crisis(user_message: str, timezone: str | None = None) -> CrisisResult:
     for pattern in _COMPILED_PATTERNS:
-        match = pattern.search(user_message)
-        if match:
+        if pattern.search(user_message):
             return CrisisResult(
                 is_crisis=True,
                 matched_pattern=pattern.pattern,
-                response=CRISIS_RESPONSE,
+                response=_EMPATHETIC_RESPONSE,
+                crisis_contacts=_get_crisis_contacts(timezone),
             )
-
     return CrisisResult(is_crisis=False)

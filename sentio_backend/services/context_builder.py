@@ -1,9 +1,6 @@
 """
-Sentio – Per-user conversation memory.
-
-Maintains a sliding window of the last N messages for each user.
-The window is held in-process memory. For production at scale,
-swap the backing store for Redis or Firestore.
+Sentio – Per-session conversation memory.
+Cache key : "{user_id}:{session_id}"
 """
 
 from __future__ import annotations
@@ -11,58 +8,96 @@ from __future__ import annotations
 from collections import deque
 from typing import Deque
 
-from core.config import settings
+from loguru import logger
+
+Message = dict[str, str]
 
 
-# Type alias for a single chat message
-Message = dict[str, str]  # {"role": "user" | "assistant", "content": "..."}
+def _get_firestore():
+    try:
+        import firebase_admin
+        from firebase_admin import firestore as fs
+        if not firebase_admin._apps:
+            return None
+        return fs.client()
+    except Exception:
+        return None
+
+
+def _get_window_size() -> int:
+    try:
+        from core.config import settings
+        return getattr(settings, "MEMORY_WINDOW", 20)
+    except Exception:
+        return 20
 
 
 class ContextBuilder:
-    """
-    In-memory conversation context manager.
-
-    Each user gets a fixed-size deque of Message dicts.
-    When the deque is full, the oldest message is automatically dropped.
-
-    Args:
-        window_size: Maximum number of messages to retain per user.
-                     Defaults to settings.MEMORY_WINDOW.
-    """
-
     def __init__(self, window_size: int | None = None) -> None:
-        self._window: int = window_size or settings.MEMORY_WINDOW
-        self._store: dict[str, Deque[Message]] = {}
+        self._window: int = window_size or _get_window_size()
+        self._cache: dict[str, Deque[Message]] = {}
 
-    def get_history(self, user_id: str) -> list[Message]:
-        """
-        Return the conversation history for *user_id* as a plain list.
+    @staticmethod
+    def _key(user_id: str, session_id: str | None) -> str:
+        return f"{user_id}:{session_id}" if session_id else user_id
 
-        Args:
-            user_id: Unique user identifier.
+    def get_history(self, user_id: str, session_id: str | None = None) -> list[Message]:
+        key = self._key(user_id, session_id)
+        if key not in self._cache:
+            self._load_from_firestore(user_id, session_id, key)
+        return list(self._cache.get(key, deque()))
 
-        Returns:
-            Ordered list of message dicts (oldest first).
-        """
-        return list(self._store.get(user_id, deque()))
+    def add_message(self, user_id: str, role: str, content: str, session_id: str | None = None) -> None:
+        key = self._key(user_id, session_id)
+        if key not in self._cache:
+            self._cache[key] = deque(maxlen=self._window)
+        self._cache[key].append({"role": role, "content": content})
 
-    def add_message(self, user_id: str, role: str, content: str) -> None:
-        """
-        Append a new message to *user_id*'s history.
+    def clear_history(self, user_id: str, session_id: str | None = None) -> None:
+        self._cache.pop(self._key(user_id, session_id), None)
 
-        Args:
-            user_id: Unique user identifier.
-            role: "user" or "assistant".
-            content: Message text.
-        """
-        if user_id not in self._store:
-            self._store[user_id] = deque(maxlen=self._window)
-        self._store[user_id].append({"role": role, "content": content})
+    def history_length(self, user_id: str, session_id: str | None = None) -> int:
+        return len(self._cache.get(self._key(user_id, session_id), []))
 
-    def clear_history(self, user_id: str) -> None:
-        """Erase the entire history for *user_id*."""
-        self._store.pop(user_id, None)
+    def _load_from_firestore(self, user_id: str, session_id: str | None, key: str) -> None:
+        db = _get_firestore()
+        if db is None:
+            self._cache[key] = deque(maxlen=self._window)
+            return
 
-    def history_length(self, user_id: str) -> int:
-        """Return the number of stored messages for *user_id*."""
-        return len(self._store.get(user_id, []))
+        try:
+            if session_id:
+                docs = (
+                    db.collection("chats")
+                    .document(user_id)
+                    .collection("sessions")
+                    .document(session_id)
+                    .collection("messages")
+                    .order_by("seq")
+                    .limit_to_last(self._window)
+                    .get()
+                )
+            else:
+                docs = (
+                    db.collection("chats")
+                    .document(user_id)
+                    .collection("context")
+                    .order_by("seq")
+                    .limit_to_last(self._window)
+                    .get()
+                )
+
+            msgs: deque[Message] = deque(maxlen=self._window)
+            for doc in docs:
+                data = doc.to_dict()
+                role    = data.get("role")
+                content = data.get("content")
+                if role and content:
+                    msgs.append({"role": role, "content": content})
+
+            self._cache[key] = msgs
+            logger.debug(f"[ContextBuilder] Loaded {len(msgs)} messages for key={key!r}")
+
+        except Exception as exc:
+            logger.warning(f"[ContextBuilder] Firestore read failed for {key!r}: {exc}")
+            self._cache[key] = deque(maxlen=self._window)

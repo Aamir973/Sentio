@@ -1,10 +1,7 @@
-"""
-Sentio Mental Health Chatbot – FastAPI Application Entry Point
-"""
-
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from api.chat import router as chat_router
+from api.sessions import router as sessions_router   # ← add this
 from core.config import settings
 
 app = FastAPI(
@@ -22,11 +19,11 @@ app.add_middleware(
 )
 
 app.include_router(chat_router, prefix="/api/v1", tags=["Chat"])
+app.include_router(sessions_router, prefix="/api/v1", tags=["Sessions"])   # ← add this
 
 
 @app.get("/health")
 async def health_check():
-    """Health check endpoint."""
     return {"status": "ok", "service": "Sentio API"}
 
 
