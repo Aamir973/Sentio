@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Sentio</string>
+    <string name="title_activity_main">Sentio</string>
+    <string name="package_name">com.sentio.app</string>
+    <string name="custom_url_scheme">com.sentio.app</string>
+</resources>

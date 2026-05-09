@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Sentio | Mental Health Companion</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+    <script>
+        firebase.initializeApp({
+            apiKey: "AIzaSyBWdcy64KuK8T2ErdelVfyB-dpQNaSfPr0",
+            authDomain: "sentio-2b90e.firebaseapp.com",
+            projectId: "sentio-2b90e",
+            storageBucket: "sentio-2b90e.firebasestorage.app",
+            messagingSenderId: "494027914561",
+            appId: "1:494027914561:web:d4c1bda1cf7f68cf21b5c0"
+        });
+    </script>
+</head>
+<body>
+<div class="bg-blobs">
+    <div class="blob blob-1"></div>
+    <div class="blob blob-2"></div>
+    <div class="blob blob-3"></div>
+</div>
+
+<!-- ── Sidebar ──────────────────────────────────────────────────── -->
+<div id="sidebarOverlay" onclick="closeSidebar()"></div>
+<div id="chatSidebar">
+    <div class="sidebar-header">
+        <h3>Chat History</h3>
+        <button class="sidebar-close" onclick="closeSidebar()"><i data-lucide="x"></i></button>
+    </div>
+    <button class="new-chat-btn" onclick="startNewChat()"><i data-lucide="plus"></i> New Conversation</button>
+    <div id="sessionList"></div>
+</div>
+
+<!-- ── Crisis Modal ─────────────────────────────────────────────── -->
+<div id="crisisOverlay" class="crisis-overlay" onclick="closeCrisisModal()"></div>
+<div id="crisisModal" class="crisis-modal">
+    <div class="crisis-modal-header">
+        <div class="crisis-icon">💚</div>
+        <h2>You're Not Alone</h2>
+        <p>Reaching out takes courage. Here are people who can help right now.</p>
+    </div>
+    <div id="crisisHotlines" class="crisis-hotlines"></div>
+    <div class="crisis-modal-footer">
+        <button class="crisis-close-btn" onclick="closeCrisisModal()">I've seen this, continue chatting</button>
+    </div>
+</div>
+
+<!-- ── Activity Modal ───────────────────────────────────────────── -->
+<div id="activityOverlay" class="activity-overlay" onclick="closeActivityModal()"></div>
+<div id="activityModal" class="activity-modal">
+    <div class="activity-modal-header">
+        <button class="activity-modal-close" onclick="closeActivityModal()"><i data-lucide="x"></i></button>
+        <div id="activityModalIcon" class="activity-modal-icon"></div>
+        <h2 id="activityModalTitle"></h2>
+        <p id="activityModalSubtitle"></p>
+    </div>
+    <div id="activityModalBody" class="activity-modal-body"></div>
+</div>
+
+<!-- ── Camera / Upload Modal ────────────────────────────────────── -->
+<div id="cameraOverlay" class="camera-overlay">
+    <div class="camera-modal">
+        <h3>Add Medical Record</h3>
+        <p id="cameraModalSection">Section: Prescriptions</p>
+        <img id="cameraPreview" class="camera-preview hidden" alt="Preview" />
+        <div class="camera-actions">
+            <div class="camera-btn-row">
+                <label class="camera-btn secondary" style="cursor:pointer;">
+                    <i data-lucide="camera"></i> Camera
+                    <input type="file" id="cameraInput" accept="image/*" capture="environment" style="display:none" onchange="handleImageCapture(event)">
+                </label>
+                <label class="camera-btn secondary" style="cursor:pointer;">
+                    <i data-lucide="upload"></i> Gallery
+                    <input type="file" id="galleryInput" accept="image/*" style="display:none" onchange="handleImageCapture(event)">
+                </label>
+            </div>
+            <input type="text" id="cameraNote" class="camera-note-input" placeholder="Add a note (optional)…" maxlength="200">
+            <div class="camera-btn-row">
+                <button class="camera-btn primary" id="cameraSaveBtn" onclick="saveMedicalRecord()" disabled>
+                    <i data-lucide="save"></i> Save Record
+                </button>
+            </div>
+            <button class="camera-cancel" onclick="closeCameraModal()">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<!-- Hidden file input for image processing -->
+<canvas id="imageCompressCanvas" style="display:none"></canvas>
+
+<div id="app">
+
+    <!-- ── Loading ──────────────────────────────────────────────── -->
+    <section id="screen-loading" class="screen active">
+        <div class="processing-container">
+            <div class="pulse-wrapper">
+                <div class="pulse-ring"></div><div class="pulse-ring"></div><div class="pulse-ring"></div>
+                <i data-lucide="brain"></i>
+            </div>
+            <h3>Sentio</h3>
+            <p>Loading your wellness companion…</p>
+        </div>
+    </section>
+
+    <!-- ── Auth ─────────────────────────────────────────────────── -->
+    <section id="screen-auth" class="screen">
+        <div class="auth-container">
+            <div class="brand">
+                <div class="brand-mark">
+                    <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+                        <circle cx="24" cy="24" r="22" stroke="var(--sage-dark)" stroke-width="2"/>
+                        <path d="M14 24 Q24 12 34 24 Q24 36 14 24Z" fill="var(--sage-medium)" opacity="0.6"/>
+                        <circle cx="24" cy="24" r="4" fill="var(--sage-dark)"/>
+                    </svg>
+                </div>
+                <h2>Sentio</h2>
+                <p>Mindful intelligence for your well-being.</p>
+            </div>
+            <div id="formSignIn" class="auth-form">
+                <div class="form-group">
+                    <div class="input-wrapper"><i data-lucide="mail"></i><input id="signInEmail" type="email" placeholder="Email address" class="input-field"></div>
+                    <div class="input-wrapper"><i data-lucide="lock"></i><input id="signInPassword" type="password" placeholder="Password" class="input-field"></div>
+                    <div id="authError" class="auth-error hidden"></div>
+                    <button class="btn btn-primary" onclick="handleSignIn()"><span>Sign In</span><i data-lucide="arrow-right"></i></button>
+                    <div class="divider"><span>or</span></div>
+                    <button class="btn btn-google" onclick="handleGoogleSignIn()">
+                        <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+                        <span>Continue with Google</span>
+                    </button>
+                    <button class="btn btn-ghost" onclick="showSignUp()">Create an account</button>
+                </div>
+            </div>
+            <div id="formSignUp" class="auth-form hidden">
+                <div class="form-group">
+                    <div class="input-wrapper"><i data-lucide="user"></i><input id="signUpName" type="text" placeholder="Your name" class="input-field"></div>
+                    <div class="input-wrapper"><i data-lucide="mail"></i><input id="signUpEmail" type="email" placeholder="Email address" class="input-field"></div>
+                    <div class="input-wrapper"><i data-lucide="lock"></i><input id="signUpPassword" type="password" placeholder="Password (min 6 chars)" class="input-field"></div>
+                    <div id="signUpError" class="auth-error hidden"></div>
+                    <button class="btn btn-primary" onclick="handleSignUp()"><span>Create Account</span><i data-lucide="arrow-right"></i></button>
+                    <div class="divider"><span>or</span></div>
+                    <button class="btn btn-google" onclick="handleGoogleSignIn()">
+                        <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+                        <span>Sign up with Google</span>
+                    </button>
+                    <button class="btn btn-ghost" onclick="showSignIn()">Back to Sign In</button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ── Onboarding ────────────────────────────────────────────── -->
+    <section id="screen-onboarding" class="screen">
+        <div class="onboarding-container">
+            <div class="onboarding-header">
+                <div class="brand-mark" style="display:flex;justify-content:center;margin-bottom:12px;">
+                    <svg width="40" height="40" viewBox="0 0 48 48" fill="none">
+                        <circle cx="24" cy="24" r="22" stroke="var(--sage-dark)" stroke-width="2"/>
+                        <path d="M14 24 Q24 12 34 24 Q24 36 14 24Z" fill="var(--sage-medium)" opacity="0.6"/>
+                        <circle cx="24" cy="24" r="4" fill="var(--sage-dark)"/>
+                    </svg>
+                </div>
+                <h2>Welcome to Sentio</h2>
+                <p>A few quick questions to personalise your experience.</p>
+            </div>
+            <div class="onboarding-progress" id="onboardingProgress"></div>
+            <div id="onboardingQuestionWrap" class="onboarding-question"></div>
+            <div class="onboarding-nav">
+                <button class="onboarding-skip" onclick="skipOnboarding()">Skip for now</button>
+                <button class="onboarding-next" id="onboardingNextBtn" onclick="onboardingNext()" disabled>Continue →</button>
+            </div>
+        </div>
+    </section>
+
+    <!-- ── Dashboard ─────────────────────────────────────────────── -->
+    <section id="screen-dashboard" class="screen">
+        <header>
+            <div class="header-brand"><h1>Sentio</h1><span class="header-date" id="headerDate"></span></div>
+            <div class="header-actions">
+                <button class="dark-mode-toggle" id="darkModeBtn" onclick="toggleDarkMode()" title="Toggle dark mode">
+                    <i data-lucide="moon"></i>
+                </button>
+                <button class="avatar" id="avatarBtn" onclick="handleSignOut()">S</button>
+            </div>
+        </header>
+        <main>
+            <div class="greeting-band">
+                <p id="greetingText">Good morning,</p>
+                <span id="greetingName">friend</span>
+            </div>
+            <div class="card gauge-section">
+                <div class="card-label">Depression Risk Score</div>
+                <div class="gauge-container">
+                    <canvas id="gaugeCanvas"></canvas>
+                    <div class="risk-badge" id="riskBadge">NO DATA</div>
+                </div>
+                <p class="insight-text" id="insightText">Complete a check-in to get your score.</p>
+            </div>
+            <div class="card trend-section">
+                <div class="card-header-row">
+                    <span class="card-label">7-Day Mood Trend</span>
+                    <span class="trend-delta" id="trendDelta">—</span>
+                </div>
+                <div class="chart-container"><canvas id="trendCanvas"></canvas></div>
+            </div>
+            <div class="card crisis-log-card hidden" id="crisisLogCard" onclick="navigateTo('input')">
+                <div class="crisis-log-icon">⚠️</div>
+                <div class="crisis-log-body">
+                    <span class="crisis-log-count" id="crisisLogCount">0</span>
+                    <span class="crisis-log-label" id="crisisLogLabel">crises detected this week</span>
+                </div>
+                <div class="crisis-log-cta"><span>Chat now</span><i data-lucide="chevron-right"></i></div>
+            </div>
+            <div class="report-btn-row">
+                <button class="report-btn" id="weeklyReportBtn" onclick="exportWeeklyReportPDF()">
+                    <i data-lucide="bar-chart-2"></i> 7-Day Report
+                </button>
+                <button class="report-btn" id="monthlyReportBtn" onclick="exportMonthlyReportPDF()">
+                    <i data-lucide="calendar"></i> Monthly Report
+                </button>
+            </div>
+            <div class="actions-grid four-col">
+                <div class="card action-card" onclick="navigateTo('input')">
+                    <div class="icon-circle orange"><i data-lucide="message-circle"></i></div>
+                    <div class="action-info"><h4>Chat</h4><p>Talk to Sentio</p></div>
+                </div>
+                <div class="card action-card" onclick="navigateTo('activities')">
+                    <div class="icon-circle"><i data-lucide="wind"></i></div>
+                    <div class="action-info"><h4>Care</h4><p>Guided exercises</p></div>
+                </div>
+                <div class="card action-card" onclick="navigateTo('journal')">
+                    <div class="icon-circle purple"><i data-lucide="book-open"></i></div>
+                    <div class="action-info"><h4>Journal</h4><p>Write & reflect</p></div>
+                </div>
+                <div class="card action-card" onclick="navigateTo('todo')">
+                    <div class="icon-circle teal"><i data-lucide="check-square"></i></div>
+                    <div class="action-info"><h4>To-Do</h4><p>Your tasks</p></div>
+                </div>
+                <div class="card action-card" onclick="navigateTo('medical')" style="grid-column:span 2;">
+                    <div class="icon-circle med"><i data-lucide="file-heart"></i></div>
+                    <div class="action-info"><h4>Medical Records</h4><p>Prescriptions, labs & notes</p></div>
+                </div>
+            </div>
+        </main>
+        <nav class="bottom-nav">
+            <button class="nav-item active" onclick="navigateTo('dashboard')"><i data-lucide="layout-dashboard"></i><span>Home</span></button>
+            <button class="nav-item" onclick="navigateTo('input')"><i data-lucide="message-circle"></i><span>Chat</span></button>
+            <button class="nav-item" onclick="navigateTo('activities')"><i data-lucide="heart"></i><span>Care</span></button>
+            <button class="nav-item" onclick="navigateTo('journal')"><i data-lucide="book-open"></i><span>Journal</span></button>
+            <button class="nav-item" onclick="navigateTo('todo')"><i data-lucide="check-square"></i><span>To-Do</span></button>
+        </nav>
+    </section>
+
+    <!-- ── Chat Screen ────────────────────────────────────────────── -->
+    <section id="screen-input" class="screen">
+        <header>
+            <button class="icon-btn back-btn" onclick="navigateTo('dashboard')"><i data-lucide="chevron-left"></i></button>
+            <h1>How are you?</h1>
+            <div class="chat-header-actions">
+                <button class="icon-btn-sm" id="exportChatBtn" onclick="exportChatPDF()" title="Export chat as PDF"><i data-lucide="download"></i></button>
+                <button class="icon-btn-sm" onclick="toggleSidebar()" title="Chat history"><i data-lucide="clock"></i></button>
+                <button class="icon-btn-sm" onclick="startNewChat()" title="New chat"><i data-lucide="plus-circle"></i></button>
+            </div>
+        </header>
+        <div id="crisisBanner" class="crisis-banner hidden">
+            <div class="crisis-banner-left">
+                <span class="crisis-banner-icon">🕊️</span>
+                <span>If you or someone you know is having a difficult time, free support is available.</span>
+            </div>
+            <button class="crisis-banner-btn" onclick="showCrisisModalAgain()">Find resources ∨</button>
+            <button class="crisis-banner-close" onclick="hideCrisisBanner()">×</button>
+        </div>
+        <div class="chat-main" id="chatMessages">
+            <div class="chat-bubble received">
+                <div class="bubble-avatar">S</div>
+                <div class="bubble-body">Hi there. I'm Sentio — your mental wellness companion. Tell me how you're feeling today. I'm here to listen. 💚</div>
+            </div>
+        </div>
+        <div class="waveform-box" id="waveformBox" style="display:none">
+            <canvas id="micWaveform"></canvas>
+            <span class="rec-label">Recording… tap mic to stop</span>
+        </div>
+        <div class="input-actions">
+            <button id="micBtn" class="mic-circle" onclick="toggleRecording()"><i data-lucide="mic"></i></button>
+            <div class="text-input-wrapper">
+                <input id="chatInput" type="text" placeholder="Type your thoughts…" class="text-input"
+                       onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMessage();}">
+                <button class="send-btn" id="sendBtn" onclick="sendMessage()"><i data-lucide="arrow-right"></i></button>
+            </div>
+        </div>
+    </section>
+
+    <!-- ── Processing ─────────────────────────────────────────────── -->
+    <section id="screen-processing" class="screen">
+        <div class="processing-container">
+            <div class="pulse-wrapper">
+                <div class="pulse-ring"></div><div class="pulse-ring"></div><div class="pulse-ring"></div>
+                <i data-lucide="brain"></i>
+            </div>
+            <h3 id="processingLabel">Analyzing mood indicators…</h3>
+            <p>Synthesizing acoustic and linguistic patterns</p>
+        </div>
+    </section>
+
+    <!-- ── Activities ─────────────────────────────────────────────── -->
+    <section id="screen-activities" class="screen">
+        <header>
+            <button class="icon-btn back-btn" onclick="navigateTo('dashboard')"><i data-lucide="chevron-left"></i></button>
+            <h1>Recommendations</h1>
+            <div class="empty"></div>
+        </header>
+        <main>
+            <div class="category-tabs">
+                <button class="tab active" onclick="filterActivities('all',this)">For You</button>
+                <button class="tab" onclick="filterActivities('mindful',this)">Mindful</button>
+                <button class="tab" onclick="filterActivities('physical',this)">Physical</button>
+            </div>
+            <div id="activitiesGrid">
+                <div class="card activity-card" data-category="mindful" onclick="openActivity('box-breathing')">
+                    <div class="activity-top"><div class="icon-circle small"><i data-lucide="wind"></i></div><span class="activity-duration">5 min</span></div>
+                    <h4>Box Breathing</h4><p>Calm your nervous system with structured breathing</p>
+                    <button class="activity-start-btn">Start Exercise →</button>
+                </div>
+                <div class="card activity-card" data-category="mindful" onclick="openActivity('daily-journal')">
+                    <div class="activity-top"><div class="icon-circle small"><i data-lucide="book-open"></i></div><span class="activity-duration">10 min</span></div>
+                    <h4>Daily Journal</h4><p>Write freely to process thoughts and emotions</p>
+                    <button class="activity-start-btn">Start Writing →</button>
+                </div>
+                <div class="card activity-card" data-category="physical" onclick="openActivity('sleep-hygiene')">
+                    <div class="activity-top"><div class="icon-circle small"><i data-lucide="moon"></i></div><span class="activity-duration">Nightly</span></div>
+                    <h4>Sleep Hygiene</h4><p>Build a restful evening routine for better sleep</p>
+                    <button class="activity-start-btn">View Routine →</button>
+                </div>
+                <div class="card activity-card" data-category="physical" onclick="openActivity('mindful-walk')">
+                    <div class="activity-top"><div class="icon-circle small"><i data-lucide="sun"></i></div><span class="activity-duration">15 min</span></div>
+                    <h4>Mindful Walk</h4><p>Ground yourself with a slow, attentive walk outside</p>
+                    <button class="activity-start-btn">Start Walk →</button>
+                </div>
+                <div class="card activity-card" data-category="mindful" onclick="openActivity('body-scan')">
+                    <div class="activity-top"><div class="icon-circle small"><i data-lucide="heart"></i></div><span class="activity-duration">8 min</span></div>
+                    <h4>Body Scan</h4><p>Gently tune in to physical sensations from head to toe</p>
+                    <button class="activity-start-btn">Start Scan →</button>
+                </div>
+                <div class="card activity-card" data-category="physical" onclick="openActivity('gentle-stretch')">
+                    <div class="activity-top"><div class="icon-circle small"><i data-lucide="zap"></i></div><span class="activity-duration">20 min</span></div>
+                    <h4>Gentle Stretch</h4><p>Release tension held in your body with slow movement</p>
+                    <button class="activity-start-btn">Start Stretching →</button>
+                </div>
+            </div>
+        </main>
+        <nav class="bottom-nav">
+            <button class="nav-item" onclick="navigateTo('dashboard')"><i data-lucide="layout-dashboard"></i><span>Home</span></button>
+            <button class="nav-item" onclick="navigateTo('input')"><i data-lucide="message-circle"></i><span>Chat</span></button>
+            <button class="nav-item active" onclick="navigateTo('activities')"><i data-lucide="heart"></i><span>Care</span></button>
+            <button class="nav-item" onclick="navigateTo('journal')"><i data-lucide="book-open"></i><span>Journal</span></button>
+            <button class="nav-item" onclick="navigateTo('todo')"><i data-lucide="check-square"></i><span>To-Do</span></button>
+        </nav>
+    </section>
+
+    <!-- ── Journal Screen ─────────────────────────────────────────── -->
+    <section id="screen-journal" class="screen">
+        <header>
+            <button class="icon-btn back-btn" onclick="navigateTo('dashboard')"><i data-lucide="chevron-left"></i></button>
+            <h1>My Journal</h1>
+            <button class="icon-btn-sm new-entry-btn" onclick="showNewJournalEntry()" title="New entry"><i data-lucide="plus"></i></button>
+        </header>
+        <div id="journalWritePanel" class="journal-write-panel hidden">
+            <div class="journal-write-header">
+                <span id="journalWriteDate" class="journal-write-date"></span>
+                <div class="journal-prompt-row">
+                    <span id="journalPromptDisplay" class="journal-prompt-text"></span>
+                    <button class="journal-refresh-prompt" onclick="refreshScreenPrompt()" title="New prompt">↺</button>
+                </div>
+            </div>
+            <textarea id="journalWriteArea" class="journal-write-area" placeholder="Write freely — there are no rules here…"></textarea>
+            <div class="journal-write-actions">
+                <span id="journalWriteWordCount" class="journal-word-count">0 words</span>
+                <div class="journal-write-btns">
+                    <button class="btn-ghost-sm" onclick="hideNewJournalEntry()">Cancel</button>
+                    <button class="btn-sage-sm" onclick="saveJournalEntry()">Save Entry ✓</button>
+                </div>
+            </div>
+        </div>
+        <div class="journal-entries-wrap" id="journalEntriesWrap">
+            <div id="journalEntriesList" class="journal-entries-list">
+                <div class="journal-empty-state">
+                    <div class="journal-empty-icon">📓</div>
+                    <p>Your journal is empty.</p>
+                    <p class="journal-empty-sub">Tap + to write your first entry.</p>
+                </div>
+            </div>
+        </div>
+        <nav class="bottom-nav">
+            <button class="nav-item" onclick="navigateTo('dashboard')"><i data-lucide="layout-dashboard"></i><span>Home</span></button>
+            <button class="nav-item" onclick="navigateTo('input')"><i data-lucide="message-circle"></i><span>Chat</span></button>
+            <button class="nav-item" onclick="navigateTo('activities')"><i data-lucide="heart"></i><span>Care</span></button>
+            <button class="nav-item active" onclick="navigateTo('journal')"><i data-lucide="book-open"></i><span>Journal</span></button>
+            <button class="nav-item" onclick="navigateTo('todo')"><i data-lucide="check-square"></i><span>To-Do</span></button>
+        </nav>
+    </section>
+
+    <!-- ── To-Do Screen ───────────────────────────────────────────── -->
+    <section id="screen-todo" class="screen">
+        <header>
+            <button class="icon-btn back-btn" onclick="navigateTo('dashboard')"><i data-lucide="chevron-left"></i></button>
+            <h1>My To-Dos</h1>
+            <div class="empty"></div>
+        </header>
+
+        <!-- Tabs: Daily / Monthly -->
+        <div class="todo-tabs">
+            <button class="todo-tab active" id="todoTabDaily" onclick="switchTodoTab('daily')">&#128197; Daily</button>
+            <button class="todo-tab" id="todoTabMonthly" onclick="switchTodoTab('monthly')">&#128198; Monthly Habits</button>
+        </div>
+
+        <!-- DAILY VIEW -->
+        <div id="todoDailyView" style="display:flex;flex-direction:column;flex:1;overflow:hidden;">
+            <div class="todo-add-wrap">
+                <div class="todo-add-row">
+                    <input id="todoInput" type="text" class="todo-input" placeholder="Add a task for today&#8230;"
+                           onkeydown="if(event.key==='Enter'){addTodo();}">
+                    <button class="todo-add-btn" onclick="addTodo()"><i data-lucide="plus"></i></button>
+                </div>
+            </div>
+            <div class="todo-stats" id="todoStats">
+                <span id="todoStatsText">0 tasks</span>
+                <button class="todo-clear-done" onclick="clearDoneTodos()" id="todoClearBtn" style="display:none">Clear done</button>
+            </div>
+            <div class="todo-list-wrap">
+                <div id="todoList" class="todo-list">
+                    <div class="todo-empty-state">
+                        <div class="todo-empty-icon">&#9989;</div>
+                        <p>No tasks yet.</p>
+                        <p class="todo-empty-sub">Add something you'd like to get done today.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- MONTHLY HABITS VIEW -->
+        <div id="todoMonthlyView" style="display:none;flex-direction:column;flex:1;overflow:hidden;">
+            <div class="todo-month-header">
+                <button class="todo-month-nav" onclick="changeMonth(-1)"><i data-lucide="chevron-left"></i></button>
+                <span class="todo-month-title" id="todoMonthTitle"></span>
+                <button class="todo-month-nav" onclick="changeMonth(1)"><i data-lucide="chevron-right"></i></button>
+            </div>
+            <div class="todo-add-wrap">
+                <div class="todo-add-row">
+                    <input id="habitInput" type="text" class="todo-input" placeholder="Add a recurring habit&#8230;"
+                           onkeydown="if(event.key==='Enter'){addHabit();}">
+                    <button class="todo-add-btn" onclick="addHabit()"><i data-lucide="plus"></i></button>
+                </div>
+            </div>
+            <div class="todo-list-wrap" style="flex:1;overflow-y:auto;padding-bottom:8px;">
+                <div id="habitList" class="todo-list">
+                    <div class="todo-empty-state">
+                        <div class="todo-empty-icon">&#127775;</div>
+                        <p>No habits yet.</p>
+                        <p class="todo-empty-sub">Add a habit to track this month.</p>
+                    </div>
+                </div>
+            </div>
+            <button class="todo-month-report-btn" onclick="exportTodoMonthlyPDF()" style="flex-shrink:0;">
+                <i data-lucide="file-text"></i> Generate Monthly Habit Report
+            </button>
+        </div>
+
+        <nav class="bottom-nav">
+            <button class="nav-item" onclick="navigateTo('dashboard')"><i data-lucide="layout-dashboard"></i><span>Home</span></button>
+            <button class="nav-item" onclick="navigateTo('input')"><i data-lucide="message-circle"></i><span>Chat</span></button>
+            <button class="nav-item" onclick="navigateTo('activities')"><i data-lucide="heart"></i><span>Care</span></button>
+            <button class="nav-item" onclick="navigateTo('journal')"><i data-lucide="book-open"></i><span>Journal</span></button>
+            <button class="nav-item active" onclick="navigateTo('todo')"><i data-lucide="check-square"></i><span>To-Do</span></button>
+        </nav>
+    </section>
+
+    <section id="screen-medical" class="screen">
+        <header>
+            <button class="icon-btn back-btn" onclick="navigateTo('dashboard')"><i data-lucide="chevron-left"></i></button>
+            <h1>Medical Records</h1>
+            <div class="empty"></div>
+        </header>
+
+        <!-- Section tabs -->
+        <div class="med-sections" id="medSections">
+            <button class="med-section-tab active" onclick="switchMedSection('Prescriptions', this)">💊 Prescriptions</button>
+            <button class="med-section-tab" onclick="switchMedSection('Lab Results', this)">🧪 Lab Results</button>
+            <button class="med-section-tab" onclick="switchMedSection('Doctor Notes', this)">📋 Doctor Notes</button>
+            <button class="med-section-tab" onclick="switchMedSection('Diagnoses', this)">🩺 Diagnoses</button>
+            <button class="med-section-tab" onclick="switchMedSection('Other', this)">📁 Other</button>
+        </div>
+
+        <!-- Upload bar -->
+        <div class="med-upload-bar">
+            <button class="med-upload-btn" onclick="openCameraModal()">
+                <i data-lucide="plus-circle"></i> Add Record
+            </button>
+        </div>
+
+        <!-- Records list -->
+        <div class="med-records-list" id="medRecordsList">
+            <div class="med-empty">
+                <div class="med-empty-icon">🗂️</div>
+                <p>No records yet.</p>
+                <p class="med-empty-sub">Tap + to add your first record.</p>
+            </div>
+        </div>
+
+        <nav class="bottom-nav">
+            <button class="nav-item" onclick="navigateTo('dashboard')"><i data-lucide="layout-dashboard"></i><span>Home</span></button>
+            <button class="nav-item" onclick="navigateTo('input')"><i data-lucide="message-circle"></i><span>Chat</span></button>
+            <button class="nav-item" onclick="navigateTo('activities')"><i data-lucide="heart"></i><span>Care</span></button>
+            <button class="nav-item" onclick="navigateTo('journal')"><i data-lucide="book-open"></i><span>Journal</span></button>
+            <button class="nav-item" onclick="navigateTo('todo')"><i data-lucide="check-square"></i><span>To-Do</span></button>
+        </nav>
+    </section>
+
+</div>
+<script src="app.js?v=7"></script>
+</body>
+</html>
