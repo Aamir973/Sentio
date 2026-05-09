@@ -3,7 +3,7 @@
    ═══════════════════════════════════════════════════════════════ */
 'use strict';
 
-const API_BASE = 'http://localhost:8000/api/v1';
+const API_BASE = 'https://sentio-backend-311t.onrender.com/api/v1';
 
 let state = {
     userId: null, userName: 'friend', userEmail: null, idToken: null,
@@ -125,7 +125,7 @@ async function handleSignUp() {
 }
 async function handleGoogleSignIn() {
     clearAuthError();
-    try { setAuthLoading(true); await firebase.auth().signInWithPopup(new firebase.auth.GoogleAuthProvider()); }
+    try { setAuthLoading(true); await firebase.auth().signInWithRedirect(new firebase.auth.GoogleAuthProvider()); }
     catch (err) { showAuthError('authError', friendlyAuthError(err.code)); showAuthError('signUpError', friendlyAuthError(err.code)); }
     finally { setAuthLoading(false); }
 }
