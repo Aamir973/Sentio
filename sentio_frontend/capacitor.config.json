@@ -1,5 +1,20 @@
 {
   "appId": "com.sentio.app",
   "appName": "Sentio",
-  "webDir": "www"
+  "webDir": "www",
+  "server": {
+    "androidScheme": "https",
+    "cleartext": true
+  },
+  "plugins": {
+    "GoogleAuth": {
+      "scopes": ["profile", "email"],
+      "serverClientId": "494027914561-ebm73bai65d4td19kii26s9trud8p72r.apps.googleusercontent.com",
+      "forceCodeForRefreshToken": true
+    },
+    "Keyboard": {
+      "resize": "body",
+      "resizeOnFullScreen": true
+    }
+  }
 }

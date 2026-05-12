@@ -36,7 +36,7 @@ class Settings(BaseSettings):
     MEMORY_WINDOW: int = 10
 
     # ── CORS ──────────────────────────────────────────────────────────────────
-    ALLOWED_ORIGINS: List[str] = ["http://localhost:3000"]
+    ALLOWED_ORIGINS: List[str] = ["*"]
 
     model_config = SettingsConfigDict(
         env_file=".env",

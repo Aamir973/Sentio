@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "494027914561",
+    "project_id": "sentio-2b90e",
+    "storage_bucket": "sentio-2b90e.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:494027914561:android:8d88c0cc3ee1ca6521b5c0",
+        "android_client_info": {
+          "package_name": "com.sentio.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "494027914561-7n0gh37296q25rqjuuq1krnlpe9akb35.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.sentio.app",
+            "certificate_hash": "75160ab236d2b0cfd2d84d6addb88b4ba6c2ca05"
+          }
+        },
+        {
+          "client_id": "494027914561-ebm73bai65d4td19kii26s9trud8p72r.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCGV5KKpLxshDcnWE_07unGStHfZoBtpOE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "494027914561-ebm73bai65d4td19kii26s9trud8p72r.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

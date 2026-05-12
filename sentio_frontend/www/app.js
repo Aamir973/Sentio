@@ -125,7 +125,9 @@ async function handleSignUp() {
 }
 async function handleGoogleSignIn() {
     clearAuthError();
-    try { setAuthLoading(true); await firebase.auth().signInWithRedirect(new firebase.auth.GoogleAuthProvider()); }
+    try { setAuthLoading(true); const googleUser = await CapacitorGoogleAuth.GoogleAuth.signIn();
+const credential = firebase.auth.GoogleAuthProvider.credential(googleUser.authentication.idToken);
+await firebase.auth().signInWithCredential(credential); }
     catch (err) { showAuthError('authError', friendlyAuthError(err.code)); showAuthError('signUpError', friendlyAuthError(err.code)); }
     finally { setAuthLoading(false); }
 }
