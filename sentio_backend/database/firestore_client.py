@@ -45,12 +45,10 @@ def _init_firebase():
     global _firestore_db
     if _firestore_db is not None:
         return _firestore_db
-
     try:
+        import os, json
         import firebase_admin
         from firebase_admin import credentials, firestore
-
-import os, json
         cred_json = os.environ.get("FIREBASE_CREDENTIALS_JSON")
         if not firebase_admin._apps:
             if cred_json:
@@ -65,15 +63,12 @@ import os, json
                     return None
                 cred = credentials.Certificate(str(cred_path))
             firebase_admin.initialize_app(cred)
-
         _firestore_db = firestore.client()
         logger.info("Firebase Firestore initialised successfully.")
         return _firestore_db
-
     except Exception as exc:
         logger.error(f"Firebase initialisation failed: {exc}")
         return None
-
 
 class FirestoreClient:
     def __init__(self) -> None:
