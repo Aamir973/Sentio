@@ -50,16 +50,20 @@ def _init_firebase():
         import firebase_admin
         from firebase_admin import credentials, firestore
 
-        cred_path = Path(settings.FIREBASE_CREDENTIALS_PATH)
-        if not cred_path.exists():
-            logger.warning(
-                f"Firebase credentials not found at {cred_path}. "
-                "Firestore persistence is DISABLED."
-            )
-            return None
-
+import os, json
+        cred_json = os.environ.get("FIREBASE_CREDENTIALS_JSON")
         if not firebase_admin._apps:
-            cred = credentials.Certificate(str(cred_path))
+            if cred_json:
+                cred = credentials.Certificate(json.loads(cred_json))
+            else:
+                cred_path = Path(settings.FIREBASE_CREDENTIALS_PATH)
+                if not cred_path.exists():
+                    logger.warning(
+                        f"Firebase credentials not found at {cred_path}. "
+                        "Firestore persistence is DISABLED."
+                    )
+                    return None
+                cred = credentials.Certificate(str(cred_path))
             firebase_admin.initialize_app(cred)
 
         _firestore_db = firestore.client()
