@@ -3,7 +3,7 @@
   "appName": "Sentio",
   "webDir": "www",
   "server": {
-    "androidScheme": "https",
+    "url": "http://192.168.1.38:8081",
     "cleartext": true
   },
   "plugins": {
@@ -13,8 +13,9 @@
       "forceCodeForRefreshToken": true
     },
     "Keyboard": {
-      "resize": "body",
-      "resizeOnFullScreen": true
-    }
+      "resize": "ionic",
+      "resizeOnFullScreen": true,
+      "scrollAssist": false
+}
   }
 }
