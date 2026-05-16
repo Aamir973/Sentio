@@ -79,7 +79,7 @@ async def transcribe_audio(file: UploadFile = File(...)):
                 "https://api.groq.com/openai/v1/audio/transcriptions",
                 headers={"Authorization": f"Bearer {api_key}"},
                 files={"file": (file.filename or "audio.webm", audio_bytes, "audio/webm")},
-                data={"model": "whisper-large-v3"}
+                data={"model": "whisper-large-v3-turbo"}
             )
         if response.status_code != 200:
             logger.error(f"[/transcribe] Groq error: {response.status_code} {response.text}")
@@ -88,4 +88,4 @@ async def transcribe_audio(file: UploadFile = File(...)):
         return {"text": text}
     except Exception as exc:
         logger.exception(f"[/transcribe] Error: {exc}")
-        raise HTTPException(status_code=500, detail="Transcription error")
+        raise HTTPException(status_code=500, detail=str(exc))
