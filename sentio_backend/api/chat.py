@@ -2,6 +2,8 @@
 Sentio – /chat FastAPI route.
 """
 from __future__ import annotations
+import os
+import httpx
 from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel, Field
 from loguru import logger
@@ -62,3 +64,28 @@ async def chat_endpoint(request: ChatRequest) -> ChatResponse:
         depression_score=score,
         crisis_contacts=result.get("crisis_contacts", {}),
     )
+    import os, httpx
+from fastapi import UploadFile, File
+
+@router.post("/transcribe", status_code=status.HTTP_200_OK)
+async def transcribe_audio(file: UploadFile = File(...)):
+    try:
+        audio_bytes = await file.read()
+        logger.info(f"[/transcribe] Received file: {file.filename}, size: {len(audio_bytes)}")
+        api_key = os.getenv("API_LLM_KEY")
+        logger.info(f"[/transcribe] API key found: {bool(api_key)}")
+        async with httpx.AsyncClient(timeout=30) as client:
+            response = await client.post(
+                "https://api.groq.com/openai/v1/audio/transcriptions",
+                headers={"Authorization": f"Bearer {api_key}"},
+                files={"file": (file.filename or "audio.webm", audio_bytes, "audio/webm")},
+                data={"model": "whisper-large-v3"}
+            )
+        if response.status_code != 200:
+            logger.error(f"[/transcribe] Groq error: {response.status_code} {response.text}")
+            raise HTTPException(status_code=502, detail=f"Transcription failed: {response.text}")
+        text = response.json().get("text", "")
+        return {"text": text}
+    except Exception as exc:
+        logger.exception(f"[/transcribe] Error: {exc}")
+        raise HTTPException(status_code=500, detail="Transcription error")
