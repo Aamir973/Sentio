@@ -527,36 +527,73 @@ function filterActivities(category,tabEl){document.querySelectorAll('.tab').forE
 ═══════════════════════════════════════════════════════════════════ */
 async function toggleRecording(){if(state.isRecording)stopRecording();else await startRecording();}
 async function startRecording(){
-  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
-  if(!SR){alert('Voice input not supported on this device.');return;}
   try{
-    const r=new SR();
-    r.lang='en-US';
-    r.continuous=false;
-    r.interimResults=false;
+    const {Microphone} = Capacitor.Plugins;
+    const permission = await Microphone.requestPermissions();
+    if(permission.microphone !== 'granted'){
+      alert('Microphone permission is required for voice input.');
+      return;
+    }
+    await Microphone.startRecording();
     state.isRecording=true;
     document.getElementById('micBtn')?.classList.add('recording');
     const wfBox=document.getElementById('waveformBox');
     if(wfBox)wfBox.style.display='flex';
     startWaveform();
-    r.onresult=e=>{
-      const t=e.results[0][0].transcript;
-      const inp=document.getElementById('chatInput');
-      if(inp){inp.value=(inp.value+' '+t).trim();inp.dispatchEvent(new Event('input'));}
-      stopRecording();
-    };
-    r.onerror=e=>{
-      alert('Could not access the microphone.');
-      stopRecording();
-    };
-    r.onend=()=>{stopRecording();};
-    r.start();
   }catch(err){
-    alert('Could not access the microphone.');
+    console.error('[Sentio] Mic error:',err);
+    alert('Could not access the microphone: '+err.message);
     stopRecording();
   }
 }
-function stopRecording(){state.isRecording=false;state.mediaRecorder?.stop();state.mediaRecorder?.stream?.getTracks().forEach(t=>t.stop());document.getElementById('micBtn')?.classList.remove('recording');const wfBox=document.getElementById('waveformBox');if(wfBox)wfBox.style.display='none';stopWaveform();}
+function stopRecording(){
+  state.isRecording=false;
+  document.getElementById('micBtn')?.classList.remove('recording');
+  const wfBox=document.getElementById('waveformBox');
+  if(wfBox)wfBox.style.display='none';
+  stopWaveform();
+  setTimeout(()=>_transcribeAudio(), 500);
+}
+
+async function _transcribeAudio(){
+  try{
+    const {Microphone} = Capacitor.Plugins;
+    const result = await Microphone.stopRecording();
+   if(!result?.base64String){
+  alert('No audio recorded.');
+  return;
+}
+const mimeType = 'audio/mp4';
+const blob = _base64ToBlob(result.base64String, mimeType);
+    const formData = new FormData();
+    formData.append('file', blob, 'recording.m4a');
+    formData.append('model', 'whisper-large-v3-turbo');
+    formData.append('language', 'en');
+    formData.append('response_format', 'json');
+    const res = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
+      method: 'POST',
+      headers: {'Authorization': 'Bearer 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'},
+      body: formData
+    });
+    const data = await res.json();
+    if(data.text){
+      const inp = document.getElementById('chatInput');
+      if(inp){inp.value=(inp.value+' '+data.text).trim();inp.dispatchEvent(new Event('input'));}
+    }else{
+      alert('Could not transcribe audio. Please try again.');
+    }
+  }catch(err){
+    console.error('[Sentio] Transcription error:',err);
+    alert('Transcription failed: '+err.message);
+  }
+}
+
+function _base64ToBlob(base64, mimeType){
+  const bytes = atob(base64);
+  const arr = new Uint8Array(bytes.length);
+  for(let i=0;i<bytes.length;i++) arr[i]=bytes.charCodeAt(i);
+  return new Blob([arr], {type: mimeType});
+}
 function startWaveform(){const canvas=document.getElementById('micWaveform');if(!canvas)return;const container=canvas.parentElement,cssW=container.clientWidth||260,cssH=60;canvas.width=cssW;canvas.height=cssH;canvas.style.width=cssW+'px';canvas.style.height=cssH+'px';const ctx=canvas.getContext('2d');function animate(){ctx.clearRect(0,0,cssW,cssH);ctx.beginPath();ctx.strokeStyle='#5D7A56';ctx.lineWidth=2.5;ctx.lineCap='round';const t=Date.now()*0.008;for(let x=0;x<cssW;x+=4){const amp=state.isRecording?16:2,y=cssH/2+Math.sin(x*0.04+t)*amp+Math.sin(x*0.08+t*1.3)*(amp*0.4);x===0?ctx.moveTo(x,y):ctx.lineTo(x,y);}ctx.stroke();state.animId=requestAnimationFrame(animate);}animate();}
 function stopWaveform(){if(state.animId)cancelAnimationFrame(state.animId);state.animId=null;const canvas=document.getElementById('micWaveform');if(canvas)canvas.getContext('2d').clearRect(0,0,canvas.width,canvas.height);}
 function startProcessing(label='Analyzing mood indicators…'){document.getElementById('processingLabel').textContent=label;navigateTo('processing');setTimeout(()=>navigateTo('dashboard'),3200);}

@@ -13,3 +13,6 @@ project(':capacitor-share').projectDir = new File('../node_modules/@capacitor/sh
 
 include ':codetrix-studio-capacitor-google-auth'
 project(':codetrix-studio-capacitor-google-auth').projectDir = new File('../node_modules/@codetrix-studio/capacitor-google-auth/android')
+
+include ':mozartec-capacitor-microphone'
+project(':mozartec-capacitor-microphone').projectDir = new File('../node_modules/@mozartec/capacitor-microphone/android')
