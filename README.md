@@ -24,8 +24,9 @@ Department of Computer Science and Information Technology · Group CT-22045
 | Home Dashboard | Chat + Crisis Detection | Care & Recommendations | To-Do & Habits |
 |:-:|:-:|:-:|:-:|
 | Risk gauge, 7-day mood trend | LLaMA3 chatbot with safety layer | Box breathing, journaling, sleep hygiene | Daily tasks + monthly habit tracker |
-| ![Home Screen](https://raw.githubusercontent.com/Aamir973/Sentio/main/1.png) |
+| ![Home Screen](https://raw.githubusercontent.com/Aamir973/Sentio/main/1.png) | ![Home Screen](https://raw.githubusercontent.com/Aamir973/Sentio/main/2.png) | ![Home Screen](https://raw.githubusercontent.com/Aamir973/Sentio/main/3.png) | ![Home Screen](https://raw.githubusercontent.com/Aamir973/Sentio/main/5.png) |
 
+![Home Screen](https://raw.githubusercontent.com/Aamir973/Sentio/main/5.png)
 ---
 
 ## ✨ Features
