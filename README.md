@@ -285,15 +285,6 @@ POST /api/v1/chat
 
 ---
 
-## 👥 Team
-
-| Name | Role | ID |
-|------|------|----|
-| **Ayan Adnan** | Audio model · Feature extraction · MFCC pipeline | DT-22014 |
-| **Syed Awais Waseem** | Frontend UI · Dashboard · Deployment | DT-22033 |
-| **Muhammad Aman Qazi** | Text model · DistilBERT · Documentation | DT-22044 |
-| **Muhammad Aamir** | Backend · Fusion architecture · Firebase · LLM integration | DT-22047 |
-
 **Project Advisor:** Engr. Mehar Fatima, Lecturer
 **Technical Advisor:** Mr. Bilal Saeed
 
