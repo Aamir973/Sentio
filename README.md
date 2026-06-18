@@ -62,8 +62,8 @@ Department of Computer Science and Information Technology · Group CT-22045
            │                         │
 ┌──────────▼──────────┐   ┌──────────▼──────────────────────┐
 │    TEXT MODEL        │   │         AUDIO MODEL              │
-│  DistilBERT          │   │  librosa → MFCC (40 coeffs)     │
-│  all-MiniLM-L6-v2   │   │  pitch · jitter · shimmer        │
+│  DistilBERT          │   │  wavelm → librosa → MFCC (40 coeffs)│
+│                      │   │  pitch · jitter · shimmer        │
 │  SentenceTransformers│   │  ANOVA feature selection         │
 │  → 256-d embedding  │   │  → 256-d embedding               │
 └──────────┬──────────┘   └──────────┬───────────────────────┘
